@@ -23,6 +23,11 @@ h1 .logo{width:38px;height:38px;border-radius:11px;background:var(--accent);disp
 h1 small{font-size:14px;font-weight:600;color:var(--mute)}
 .sub{color:var(--mute);margin:8px 0 14px;font-size:15px}
 .search{width:100%;padding:15px 18px;border:1px solid var(--line);border-radius:18px;font:inherit;background:var(--card);color:var(--ink)}
+.sbox{position:relative}.sbox .search{padding-inline-end:48px}
+#clr{position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);border:0;background:var(--chip);color:var(--mute);width:30px;height:30px;border-radius:50%;font-size:20px;line-height:1;display:none;cursor:pointer}
+.sbox.has #clr{display:block}
+input[type=search]::-webkit-search-cancel-button{display:none}
+.chips.off{opacity:.45}
 .search:focus{outline:2px solid var(--accent);outline-offset:1px}
 .chips{display:flex;gap:10px;overflow-x:auto;padding:14px 0;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
@@ -34,19 +39,27 @@ h1 small{font-size:14px;font-weight:600;color:var(--mute)}
 .head{width:100%;display:flex;align-items:center;gap:10px;padding:18px;background:none;border:0;font:inherit;color:inherit;text-align:start;cursor:pointer}
 .dot{width:14px;height:14px;border-radius:50%;flex:none}
 .title{flex:1;font-weight:700;line-height:1.5}
-.title bdi{direction:ltr}
 .tag{background:var(--chip);color:var(--mute);border-radius:12px;padding:4px 12px;font-size:14px;direction:ltr}
 .arrow{color:var(--mute);font-size:12px;transition:transform .2s}
 .card.open .arrow{transform:rotate(180deg)}
 .body{display:none;padding:0 18px 20px}
 .card.open .body{display:block}
 .sev{display:inline-block;color:#fff;border-radius:16px;padding:7px 16px;font-size:15px;margin:4px 0 6px}
-.body h3{color:var(--accent);margin:18px 0 6px;font-size:18px}
+.body h3{color:var(--accent);margin:20px 0 6px;font-size:18px}
+.body h4{margin:16px 0 4px;font-size:16.5px;color:var(--ink)}
+.body p{margin:6px 0;line-height:1.8}
 .body ul{margin:0;padding-inline-start:22px}
 .body li{margin:7px 0;line-height:1.7}
+.note{background:#fff4e6;border:1px solid #ffd8a8;border-radius:12px;padding:10px 14px;font-size:15px;line-height:1.7;margin:12px 0}
+figure{margin:12px 0}
+figure img{width:100%;display:block;border-radius:14px;border:1px solid var(--line);cursor:zoom-in;background:#fafafa}
+figcaption{font-size:13px;color:var(--mute);text-align:center;margin-top:6px}
 .empty{text-align:center;color:var(--mute);padding:40px 10px}
 .todo{color:var(--mute);font-size:15px;margin:10px 0 0}
 .foot{text-align:center;color:var(--mute);font-size:13px;margin-top:22px}
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9;align-items:center;justify-content:center;padding:12px}
+#lb.on{display:flex}
+#lb img{max-width:100%;max-height:100%;border-radius:10px}
 </style>
 </head>
 <body>
@@ -54,62 +67,179 @@ h1 small{font-size:14px;font-weight:600;color:var(--mute)}
 <header>
   <h1><span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></span>FixTech <small>مشغل أعطال</small></h1>
   <p class="sub">اكتب العَرَض أو المشكلة وشوف السبب والحل</p>
-  <input id="q" class="search" type="search" placeholder="ابحث عن: سويتش، ريليه، سلونيد..." autocomplete="off" aria-label="بحث">
+  <div class="sbox" id="sbox"><input id="q" class="search" type="search" placeholder="ابحث عن: سويتش، ريليه، سلونيد..." autocomplete="off" enterkeyhint="search" aria-label="بحث"><button id="clr" type="button" aria-label="مسح البحث">×</button></div>
 </header>
 <div class="chips" id="chips" role="group" aria-label="التصنيفات"></div>
 <div class="count" id="count"></div>
 <main id="list"></main>
 <div class="foot">FixTech · يعمل بدون إنترنت</div>
 </div>
+<div id="lb"><img alt=""></div>
 
 <script>
 /* ===== بيانات الأعطال — أضف أي عطل جديد هنا =====
-   cat: التصنيف (يجب أن يكون في CATEGORIES)
-   code: الرمز الصغير الظاهر في البطاقة
-   level: ok | warn | danger   (لون النقطة)
-   status / causes / fix: قوائم نقاط
+   cat: التصنيف | code: الرمز الصغير | level: ok / warn / danger
+   blocks: عناصر الشرح بالترتيب:
+     {h:"عنوان"}  {sub:"عنوان فرعي"}  {p:"فقرة"}  {ul:["نقطة","نقطة"]}
+     {note:"تنبيه"}  {img:"اسم-الصورة.jpg", cap:"وصف"}
 */
-const CATEGORIES = ["Incl","Relay Tsk","Relay Encl","Sensor Color","Vac"];  // أضف خانات جديدة هنا
+const CATEGORIES = ["Incl","Relay Tsk","Relay Encl","Sensor Color","Vac"];
+
+const SOLDER_NOTE = {note:"تنبيه: افصل الكهرباء قبل اللحام. الكوبري للاختبار فقط، وأزِله بعد الفحص ولا تشغّل الماكينة وهو موصول."};
 
 const FAULTS = [
-  { id:1, cat:"Incl", code:"Encl", level:"warn",
-    title:"سويتش الـ Encl",
-    status:["لابد من سلامة الكابل","جميع أطراف التوصيل جيدة"],
-    causes:["قطع في الليد الموصل","كسر الكابل","السويتش stuck"],
-    fix:[] },
-  { id:2, cat:"Incl", code:"Encl", level:"danger", title:"بروب الـ Encl" },
-  { id:3, cat:"Incl", code:"Encl", level:"warn",   title:"ريليهات الـ Encl" },
-  { id:4, cat:"Incl", code:"Encl", level:"ok",     title:"سلونيد الـ Encl" },
-  { id:5, cat:"Incl", code:"DIODE", level:"warn",  title:"دايود" },
-  { id:6, cat:"Incl", code:"Air", level:"ok",      title:"سلونيد الـ Air" },
-  { id:7, cat:"Incl", code:"Air", level:"ok",      title:"وصلة الـ Air" }
+{ id:0, cat:"Incl", code:"Encl", level:"warn",
+  title:"شرح أعطال دائرة الانكليفمينت (إغلاق وفصل الدائرة)",
+  blocks:[
+    {h:"أولًا: الإغلاق"},
+    {p:"تنقسم المشكلة إلى حالتين: الجيك لا يغلق، أو الجيك قافل باستمرار."},
+
+    {h:"1) الجيك لا يغلق"},
+    {p:"نبدأ بفحص جزأين: الأول الهواء، والثاني الكهرباء."},
+
+    {sub:"الجزء الأول: الهواء"},
+    {ul:["سلونيد الهواء: اضغط على الجزء الملوّن (الزر الأزرق المحدد في الصورة) وحرّك السلونيد للتأكد من كفاءته.",
+         "وصلة دخول الهواء: تأكد من عدم وجود تسريب هواء أو كتم في خرطوم دخول الهواء للجيك."]},
+    {img:"img-solenoid-air.jpg", cap:"سلونيد الهواء — الزر الأزرق المحدد للفحص"},
+
+    {sub:"الجزء الثاني: الكهرباء"},
+
+    {sub:"أولًا: سويتش نورمال كلوز"},
+    {p:"طريقة الفحص: اعمل كوبري على طرفي السويتش ونضغط على بروب الانكليفمينت. في حالة إغلاق الدائرة نتأكد من وجود العطل في السويتش."},
+    {p:"أسباب المشكلة: إما الكاب استك، أو أحد أطراف التوصيل مفصول، أو السويتش يحتاج تغيير."},
+    SOLDER_NOTE,
+    {img:"img-switch.jpg", cap:"السويتش"},
+
+    {sub:"ثانيًا: بروب الانكليفمينت"},
+    {p:"طريقة الفحص والحل: اعمل كوبري على نقطتي التوصيل. في حالة إغلاق الدائرة نتأكد من وجود العطل في البروب ويتم تغييره في الحال."},
+
+    {sub:"ثالثًا: الريلاي المسؤول عن الانكليفمينت"},
+    {ul:["اضغط على كويل الريلاي. في حالة إغلاق الدائرة نتأكد أن العطل هو قطع في توصيلات الكهرباء أو الأرضي الموصلة للريلاي.",
+         "اعمل كوبري على طرفي الأرضي الموصل لبروب الانكليفمينت والكويل. في حالة إغلاق الدائرة نتأكد من ضرورة تغيير الريلاي."]},
+    SOLDER_NOTE,
+    {img:"img-relay.jpg", cap:"مخطط الريلاي SAP 2304278 (PL1)"},
+
+    {sub:"رابعًا: لا يوجد باور متوصل للجيك"},
+    {p:"أسباب عدم وصول الباور:"},
+    {ul:["كابل الباور الخاص بالجيك مفصول من الـPCB.",
+         "فيوز ضارب من كارت الـPCB.",
+         "في حال وجود مجموعة جيكات مفصولة، نرجع نفحص الفيوز العمومي من داخل البوردة."]},
+
+    {h:"2) الجيك قافل باستمرار ولا يفصل دائرة الانكليفمينت"},
+    {p:"عدم فتح الدائرة له عدة أسباب، أهمها:"},
+    {ul:["تلف كويل الريلاي.","تلف الدايود.","تلف الجزء الإلكتروني في السلونيد.",
+         "استمرار الضغط على البروب، أو تلف البروب (stuck).","السويتش مأكسس."]},
+    {img:"img-solenoid-elec.jpg", cap:"الجزء الإلكتروني في السلونيد (داخل الإطار)"},
+    {sub:"طريقة اكتشاف تلف كويل الريلاي"},
+    {ul:["اخبط على الكويل بأداة قوية عدة خبطات.","في حالة عدم فتح الانكل: افصل كابل الداتا والكهرباء وقم بتغيير الريلاي."]}
+  ]},
+
+{ id:1, cat:"Incl", code:"Encl", level:"danger", title:"سويتش الـ Encl",
+  blocks:[
+    {h:"الحالة"},
+    {ul:["لابد من سلامة الكاب","جميع أطراف التوصيل جيدة"]},
+    {h:"طريقة الفحص"},
+    {p:"اعمل كوبري على طرفي السويتش (سويتش نورمال كلوز) ونضغط على بروب الانكليفمينت. إذا أُغلقت الدائرة فالعطل في السويتش."},
+    SOLDER_NOTE,
+    {img:"img-switch.jpg", cap:"السويتش"},
+    {h:"الأسباب المحتملة"},
+    {ul:["قطع في الليد الموصل","كسر الكاب","السويتش stuck","الكاب استك أو أحد أطراف التوصيل مفصول","السويتش مأكسس (عند عدم فصل الدائرة)"]}
+  ]},
+
+{ id:2, cat:"Incl", code:"Encl", level:"danger", title:"بروب الـ Encl",
+  blocks:[
+    {h:"طريقة الفحص والحل"},
+    {p:"اعمل كوبري على نقطتي التوصيل. إذا أُغلقت الدائرة فالعطل في البروب ويتم تغييره في الحال."},
+    {h:"إذا كان الجيك قافل باستمرار"},
+    {ul:["استمرار الضغط على البروب","تلف البروب (stuck)"]}
+  ]},
+
+{ id:3, cat:"Incl", code:"Encl", level:"danger", title:"ريليهات الـ Encl",
+  models:["SAP 2304278 (PL1)"],
+  blocks:[
+    {h:"طريقة الفحص والحل"},
+    {ul:["اضغط على كويل الريلاي. إذا أُغلقت الدائرة فالعطل هو قطع في توصيلات الكهرباء أو الأرضي الموصلة للريلاي.",
+         "اعمل كوبري على طرفي الأرضي الموصل لبروب الانكليفمينت والكويل. إذا أُغلقت الدائرة فلا بد من تغيير الريلاي."]},
+    SOLDER_NOTE,
+    {img:"img-relay.jpg", cap:"مخطط الريلاي SAP 2304278 (PL1)"},
+    {h:"إذا كان الجيك قافل باستمرار"},
+    {ul:["تلف كويل الريلاي"]},
+    {sub:"طريقة اكتشاف تلف كويل الريلاي"},
+    {ul:["اخبط على الكويل بأداة قوية عدة خبطات.","في حالة عدم فتح الانكل: افصل كابل الداتا والكهرباء وقم بتغيير الريلاي."]}
+  ]},
+
+{ id:4, cat:"Incl", code:"Encl", level:"ok", title:"سلونيد الـ Encl",
+  blocks:[
+    {h:"إذا كان الجيك قافل باستمرار"},
+    {ul:["تلف الجزء الإلكتروني في السلونيد"]},
+    {img:"img-solenoid-elec.jpg", cap:"الجزء الإلكتروني في السلونيد (داخل الإطار)"}
+  ]},
+
+{ id:5, cat:"Incl", code:"DIODE", level:"warn", title:"دايود",
+  blocks:[
+    {h:"إذا كان الجيك قافل باستمرار"},
+    {ul:["تلف الدايود يمنع فتح الدائرة"]}
+  ]},
+
+{ id:6, cat:"Incl", code:"Air", level:"ok", title:"سلونيد الـ Air",
+  blocks:[
+    {h:"طريقة الفحص (الجيك لا يغلق)"},
+    {p:"اضغط على الجزء الملوّن (الزر الأزرق المحدد في الصورة) وحرّك السلونيد للتأكد من كفاءته."},
+    {img:"img-solenoid-air.jpg", cap:"سلونيد الهواء — الزر الأزرق المحدد للفحص"}
+  ]},
+
+{ id:7, cat:"Incl", code:"Air", level:"ok", title:"وصلة الـ Air",
+  blocks:[
+    {h:"طريقة الفحص (الجيك لا يغلق)"},
+    {ul:["تأكد من عدم وجود تسريب هواء","تأكد من عدم وجود كتم في خرطوم دخول الهواء للجيك"]}
+  ]}
 ];
 /* ================================================= */
 
 const COLORS = {ok:"#2f9e44", warn:"#e8890c", danger:"#e03131"};
 const LABELS = {ok:"الخطورة: منخفضة", warn:"الخطورة: متوسطة", danger:"الخطورة: عالية"};
-let activeCat = "ALL", query = "", openId = null;
+let activeCat = "ALL", query = "", openId = null, autoOpen = false;
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const norm = s => s.toLowerCase().replace(/[\u064B-\u0652]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي");
+const norm = s => s.toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي");
+const textOf = f => [f.title,f.code,f.cat,...(f.models||[]),...(f.blocks||[]).flatMap(b=>[b.h,b.sub,b.p,b.note,b.cap,...(b.ul||[])])].filter(Boolean).join(" ");
 
+/* ---- محرك البحث: يبحث في كل الأقسام ويفهم الجمع والمرادفات ---- */
+const STOP = new Set(["ال","اعطال","عطل","اعراض","عرض","مشكله","حل","سبب","في","من","علي","على","عن","ب","ل"]);
+const MAP = {"سويش":"سويتش","سوتش":"سويتش","switch":"سويتش","switches":"سويتش","ريلاي":"ريليه","ريلي":"ريليه","relay":"ريليه",
+  "سولينويد":"سلونيد","سولنويد":"سلونيد","solenoid":"سلونيد","probe":"بروب","diode":"دايود","دايوت":"دايود"};
+const stem = t => { t=norm(t); if(t.length>3 && t.startsWith("ال")) t=t.slice(2); if(t.length>4 && t.endsWith("ات")) t=t.slice(0,-2); return MAP[t]||t; };
+const toks = s => (s.match(/[\p{L}\p{N}]+/gu)||[]).map(stem);
+const qTokens = s => toks(s).filter(t => t && !STOP.has(t));
+const idx = f => f._i || (f._i = {all:toks(textOf(f)).join(" "), title:toks(f.title).join(" ")});
+function score(f,qt){ const i=idx(f); let s=0; for(const t of qt){ if(i.title.includes(t)) s+=3; else if(i.all.includes(t)) s+=1; else return 0; } return s; }
+
+function renderBlocks(arr){
+  return arr.map(b =>
+    b.h   ? `<h3>${esc(b.h)}</h3>` :
+    b.sub ? `<h4>${esc(b.sub)}</h4>` :
+    b.p   ? `<p>${esc(b.p)}</p>` :
+    b.note? `<div class="note">${esc(b.note)}</div>` :
+    b.ul  ? `<ul>${b.ul.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` :
+    b.img ? `<figure><img src="${esc(b.img)}" alt="${esc(b.cap||"")}" loading="lazy">${b.cap?`<figcaption>${esc(b.cap)}</figcaption>`:""}</figure>` : ""
+  ).join("");
+}
 function renderChips(){
   const all = [["ALL","الكل",true], ...CATEGORIES.map(c => [c,c,false])];
   $("#chips").innerHTML = all.map(([v,l,ar]) =>
     `<button class="chip ${ar?'ar':''}" data-v="${esc(v)}" aria-pressed="${v===activeCat}">${esc(l)}</button>`).join("");
 }
-function section(title, arr){
-  return arr && arr.length ? `<h3>${title}</h3><ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
-}
 function render(){
-  const nq = norm(query.trim());
-  const rows = FAULTS.filter(f => (activeCat==="ALL" || f.cat===activeCat) &&
-    (!nq || norm([f.title,f.code,f.cat,...(f.status||[]),...(f.causes||[]),...(f.fix||[])].join(" ")).includes(nq)));
-  $("#count").textContent = rows.length + " نتيجة";
+  const qt = qTokens(query), searching = qt.length>0;
+  const rows = searching
+    ? FAULTS.map(f=>({f,s:score(f,qt)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s||a.f.id-b.f.id).map(x=>x.f)
+    : FAULTS.filter(f => activeCat==="ALL" || f.cat===activeCat);
+  if(autoOpen){ if(searching && rows.length===1) openId=rows[0].id; autoOpen=false; }
+  $("#chips").classList.toggle("off",searching);
+  $("#count").textContent = rows.length + " نتيجة" + (searching ? " في كل الأقسام" : "");
   $("#list").innerHTML = rows.length ? rows.map(f => {
     const open = f.id===openId;
-    const has = (f.status&&f.status.length)||(f.causes&&f.causes.length)||(f.fix&&f.fix.length);
     return `<article class="card ${open?'open':''}">
       <button class="head" data-id="${f.id}" aria-expanded="${open}">
         <span class="dot" style="background:${COLORS[f.level]||COLORS.warn}"></span>
@@ -119,14 +249,20 @@ function render(){
       </button>
       <div class="body">
         <span class="sev" style="background:${COLORS[f.level]||COLORS.warn}">${LABELS[f.level]||LABELS.warn}</span>
-        ${has ? section("الحالة",f.status)+section("الأسباب المحتملة",f.causes)+section("الحل المقترح",f.fix)
-              : `<p class="todo">لم تُضف تفاصيل هذا العطل بعد.</p>`}
+        ${f.models&&f.models.length ? renderBlocks([{h:"الموديلات"},{ul:f.models}]) : ""}
+        ${f.blocks&&f.blocks.length ? renderBlocks(f.blocks) : `<p class="todo">لم تُضف تفاصيل هذا العطل بعد.</p>`}
       </div></article>`;
   }).join("") : `<div class="empty">لا توجد نتائج. جرّب كلمة أخرى أو اختر «الكل».</div>`;
 }
-$("#chips").addEventListener("click", e => { const b=e.target.closest(".chip"); if(!b) return; activeCat=b.dataset.v; openId=null; renderChips(); render(); });
-$("#list").addEventListener("click", e => { const b=e.target.closest(".head"); if(!b) return; const id=+b.dataset.id; openId = openId===id?null:id; render(); });
-$("#q").addEventListener("input", e => { query=e.target.value; openId=null; render(); });
+$("#chips").addEventListener("click", e => { const b=e.target.closest(".chip"); if(!b) return; activeCat=b.dataset.v; openId=null; query=""; $("#q").value=""; $("#sbox").classList.remove("has"); renderChips(); render(); });
+$("#list").addEventListener("click", e => {
+  const im=e.target.closest("figure img");
+  if(im){ $("#lb img").src=im.src; $("#lb").classList.add("on"); return; }
+  const b=e.target.closest(".head"); if(!b) return; const id=+b.dataset.id; openId = openId===id?null:id; render();
+});
+$("#lb").addEventListener("click", () => $("#lb").classList.remove("on"));
+$("#q").addEventListener("input", e => { query=e.target.value; openId=null; autoOpen=true; $("#sbox").classList.toggle("has",!!query); render(); });
+$("#clr").addEventListener("click", () => { query=""; openId=null; $("#q").value=""; $("#sbox").classList.remove("has"); render(); $("#q").focus(); });
 renderChips(); render();
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
 </script>

@@ -1,5 +1,6 @@
-const CACHE = 'fixtech-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
+const CACHE = 'fixtech-v5';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png',
+  './img-relay.jpg', './img-solenoid-air.jpg', './img-switch.jpg', './img-solenoid-elec.jpg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
