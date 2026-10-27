@@ -1,6 +1,7 @@
-const CACHE = 'fixtech-v5';
+const CACHE = 'fixtech-v7';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png',
-  './img-relay.jpg', './img-solenoid-air.jpg', './img-switch.jpg', './img-solenoid-elec.jpg'];
+  './img-relay.jpg', './img-solenoid-air.jpg', './img-switch.jpg', './img-solenoid-elec.jpg',
+  './img-power-supply.jpg', './img-master-card.jpg', './img-sleeve-card.jpg', './img-lock-cable.jpg', './img-bridge.jpg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();

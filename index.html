@@ -48,7 +48,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .body h3{color:var(--accent);margin:20px 0 6px;font-size:18px}
 .body h4{margin:16px 0 4px;font-size:16.5px;color:var(--ink)}
 .body p{margin:6px 0;line-height:1.8}
-.body ul{margin:0;padding-inline-start:22px}
+.body ul,.body ol{margin:0;padding-inline-start:24px}
 .body li{margin:7px 0;line-height:1.7}
 .note{background:#fff4e6;border:1px solid #ffd8a8;border-radius:12px;padding:10px 14px;font-size:15px;line-height:1.7;margin:12px 0}
 figure{margin:12px 0}
@@ -81,9 +81,9 @@ figcaption{font-size:13px;color:var(--mute);text-align:center;margin-top:6px}
    cat: التصنيف | code: الرمز الصغير | level: ok / warn / danger
    blocks: عناصر الشرح بالترتيب:
      {h:"عنوان"}  {sub:"عنوان فرعي"}  {p:"فقرة"}  {ul:["نقطة","نقطة"]}
-     {note:"تنبيه"}  {img:"اسم-الصورة.jpg", cap:"وصف"}
+     {note:"تنبيه"}  {ol:["خطوة","خطوة"]}  {img:"اسم-الصورة.jpg", cap:"وصف"}
 */
-const CATEGORIES = ["Incl","Relay Tsk","Relay Encl","Sensor Color","Vac"];
+const CATEGORIES = ["Incl","Relay Tsk","Relay Encl","Sensor Color","Vac","Power TSK"];
 
 const SOLDER_NOTE = {note:"تنبيه: افصل الكهرباء قبل اللحام. الكوبري للاختبار فقط، وأزِله بعد الفحص ولا تشغّل الماكينة وهو موصول."};
 
@@ -192,23 +192,86 @@ const FAULTS = [
   blocks:[
     {h:"طريقة الفحص (الجيك لا يغلق)"},
     {ul:["تأكد من عدم وجود تسريب هواء","تأكد من عدم وجود كتم في خرطوم دخول الهواء للجيك"]}
+  ]},
+
+{ id:8, cat:"Power TSK", code:"TSK", level:"info", title:"CIRCUIT POWER TSK — دليل توصيلات دوائر الباور لنظام TSK Test Board",
+  blocks:[
+    {h:"1) مصدر الكهرباء الرئيسي"},
+    {p:"نقطة بداية التغذية الكهربائية للنظام."},
+    {ul:["الجهد: 220V"]},
+    {img:"img-power-supply.jpg", cap:"كابل 220V الداخل وروزتة الخروج (DC): كابلان أزرق موجب (+) ومخرج أرضي أبيض في أزرق (-)"},
+
+    {h:"2) وسائل الحماية والأمان"},
+    {ul:["المكوّن: سكينة حماية / مفتاح مقاوم للتسريب الكهربي (Circuit Breaker / RCD).",
+         "مسؤول عن حماية النظام بالكامل وفصل التيار في حال حدوث أي تسريب أو خطر كهربائي."]},
+
+    {h:"3) وحدات إمداد الطاقة (Power Supply Box)"},
+    {p:"بوكس الـ Power Supply يحتوي على وحدتي إمداد طاقة منفصلتين:"},
+    {ul:["Power Supply 24V","Power Supply 12V"]},
+
+    {h:"4) نقطة الحماية العامة (General Fuses)"},
+    {p:"نقاط حماية وقواطع لكابلات الأطراف الموجبة فقط (+24V و +12V)."},
+    {ul:["Fuse 2A: مخصص لكل خط خارج من الـ Power Supply ومتجه إلى كارتات الـ Sleeve.",
+         "Fuse 5A: مخصص فقط لمسار الكارت الرئيسي (Master Card)."]},
+
+    {h:"5) نقطة توزيع الأرضي (Terminal Blocks / روزتات التوزيع)"},
+    {p:"نقاط مخصصة لتجميع وتوزيع كابلات الأرضي (Ground) لضمان استقرار النظام الكهربائي."},
+
+    {h:"6) كارت الريلاي الرئيسي (Master Card)"},
+    {p:"بمثابة وحدة تحويل ومشترك رئيسي يربط بين الأجزاء المختلفة:"},
+    {ul:["يجمع كهرباء 5V القادمة من الـ Rack من خلال كابل الريلاي (Relays Cable).",
+         "يربط مع الكهرباء الخارجة من الـ Power Supply (24V و 12V).",
+         "يقوم بتوزيع هذه الفولتات على كارتات الـ PCB من خلال الـ Bridge."]},
+    {p:"الهدف من وجود الـ Master & Sleeve Cards: توزيع الأحمال بكفاءة على جميع كارتات الـ PCB."},
+    {img:"img-master-card.jpg", cap:"كارت الماستر (Master Card)"},
+
+    {h:"7) كارتات التوزيع الفرعية (PCB Cards & Sleeve Cards)"},
+    {p:"كارتات الـ PCB ومجموعات الـ Sleeve مسؤولة عن توزيع الكهرباء النهائية لموديلات الـ TSK."},
+    {img:"img-sleeve-card.jpg", cap:"كارت الـ Sleeve"},
+    {sub:"كابل البيانات (Data Cable)"},
+    {ul:["التوصيل: متصل من الـ Master Card إلى جميع كارتات الـ Sleeve الموجودة.",
+         "الغرض: توزيع الكهرباء الخارجة من الـ Rack إلى سويتشات الموديولات."]},
+
+    {h:"ملحقات ومكونات إضافية بدوائر Power الـ TSK"},
+
+    {sub:"أ) الـ Bridge (كوبري التوصيل)"},
+    {p:"وسيلة لتوصيل ونقل الكهرباء من الـ Master Card أو الـ Sleeve Card إلى كارت الـ PCB."},
+    {img:"img-bridge.jpg", cap:"الـ Bridge (كوبري التوصيل)"},
+
+    {sub:"ب) كابل الريلاي (Relays Cable)"},
+    {ul:["عبارة عن سويتش بنظام Normally Closed (مغلق في الوضع الطبيعي).",
+         "الوظيفة: يوزع كهرباء الـ 5V القادمة من الـ Rack إلى الـ PCB من خلال كارت الإدخال/الإخراج (In/Out Port) داخل الراك.",
+         "التثبيت: يتم تثبيته في الراك حسب الـ Port المعرف في برنامج الـ Test (سواء 1 Port أو 2 Port)."]},
+
+    {sub:"ج) كابل القفل (Lock Cable)"},
+    {img:"img-lock-cable.jpg", cap:"كابل القفل (TEST LOCK)"},
+    {p:"الوظيفة الأساسية:"},
+    {ul:["تثبيت الهارنس على بورد التيست لحين إتمام مراحل الاختبار وخروج الـ Label.",
+         "ضمان عدم التلاعب في البيانات (Data) الخاصة بكل هارنس أو طريقة الفحص، ومطابقة البيانات مع نظام LMS."]},
+    {p:"طريقة التوصيل (خطوات):"},
+    {ol:["اختيار الـ Detection المناسب.",
+         "قطع كابلي هذا الـ Detection.",
+         "توصيل IHS Connector Female بالكابل الواصل للـ Detection في الموديول (يمثل الـ Input).",
+         "توصيل IHS Connector Male بالكابل الواصل لنقطة الاختبار (Test Point) في الـ PCB.",
+         "توصيل كابل اللوك في الراك حسب تعريفه داخل البرنامج."]}
   ]}
 ];
 /* ================================================= */
 
-const COLORS = {ok:"#2f9e44", warn:"#e8890c", danger:"#e03131"};
-const LABELS = {ok:"الخطورة: منخفضة", warn:"الخطورة: متوسطة", danger:"الخطورة: عالية"};
+const COLORS = {ok:"#2f9e44", warn:"#e8890c", danger:"#e03131", info:"#3b6fd4"};
+const LABELS = {ok:"الخطورة: منخفضة", warn:"الخطورة: متوسطة", danger:"الخطورة: عالية", info:"دليل توصيلات"};
 let activeCat = "ALL", query = "", openId = null, autoOpen = false;
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm = s => s.toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي");
-const textOf = f => [f.title,f.code,f.cat,...(f.models||[]),...(f.blocks||[]).flatMap(b=>[b.h,b.sub,b.p,b.note,b.cap,...(b.ul||[])])].filter(Boolean).join(" ");
+const textOf = f => [f.title,f.code,f.cat,...(f.models||[]),...(f.blocks||[]).flatMap(b=>[b.h,b.sub,b.p,b.note,b.cap,...(b.ul||[]),...(b.ol||[])])].filter(Boolean).join(" ");
 
 /* ---- محرك البحث: يبحث في كل الأقسام ويفهم الجمع والمرادفات ---- */
 const STOP = new Set(["ال","اعطال","عطل","اعراض","عرض","مشكله","حل","سبب","في","من","علي","على","عن","ب","ل"]);
 const MAP = {"سويش":"سويتش","سوتش":"سويتش","switch":"سويتش","switches":"سويتش","ريلاي":"ريليه","ريلي":"ريليه","relay":"ريليه",
-  "سولينويد":"سلونيد","سولنويد":"سلونيد","solenoid":"سلونيد","probe":"بروب","diode":"دايود","دايوت":"دايود"};
+  "سولينويد":"سلونيد","سولنويد":"سلونيد","solenoid":"سلونيد","probe":"بروب","diode":"دايود","دايوت":"دايود",
+  "fuse":"فيوز","fuses":"فيوز","lock":"لوك","card":"كارت","cards":"كارت","power":"باور","باوور":"باور"};
 const stem = t => { t=norm(t); if(t.length>3 && t.startsWith("ال")) t=t.slice(2); if(t.length>4 && t.endsWith("ات")) t=t.slice(0,-2); return MAP[t]||t; };
 const toks = s => (s.match(/[\p{L}\p{N}]+/gu)||[]).map(stem);
 const qTokens = s => toks(s).filter(t => t && !STOP.has(t));
@@ -222,6 +285,7 @@ function renderBlocks(arr){
     b.p   ? `<p>${esc(b.p)}</p>` :
     b.note? `<div class="note">${esc(b.note)}</div>` :
     b.ul  ? `<ul>${b.ul.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` :
+    b.ol  ? `<ol>${b.ol.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>` :
     b.img ? `<figure><img src="${esc(b.img)}" alt="${esc(b.cap||"")}" loading="lazy">${b.cap?`<figcaption>${esc(b.cap)}</figcaption>`:""}</figure>` : ""
   ).join("");
 }
